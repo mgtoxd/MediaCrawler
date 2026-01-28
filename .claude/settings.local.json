@@ -1,0 +1,63 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "mcp__open-websearch__search",
+      "mcp__exa__web_search_exa",
+      "Bash(docker stats:*)",
+      "Bash(node:*)",
+      "mcp__Playwright__browser_navigate",
+      "Bash(del:*)",
+      "Skill(sc:research)",
+      "Skill(sc:research:*)",
+      "mcp__airis-mcp-gateway__airis-find",
+      "mcp__acp__Bash",
+      "mcp__airis-mcp-gateway__airis-exec",
+      "Edit",
+      "mcp__serena__write_memory",
+      "mcp__serena__think_about_whether_you_are_done",
+      "Bash(uv:*)",
+      "Bash(cd:*)",
+      "Bash(ls:*)",
+      "Bash(uv pip list:*)",
+      "Bash(tree:*)",
+      "Bash(python:*)"
+    ]
+  },
+  "model": "glm-4.7",
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -Command \"Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('please come back and confirm')\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -Command \"Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('Task completed')\""
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "%USERPROFILE%\\.claude\\ccline\\ccline.exe",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "everything-claude-code@everything-claude-code": true
+  },
+  "outputStyle": "engineer-professional",
+  "alwaysThinkingEnabled": false,
+  "defaultMode": "bypassPermissions"
+}

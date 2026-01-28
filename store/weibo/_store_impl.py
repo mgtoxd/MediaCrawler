@@ -168,8 +168,12 @@ class WeiboDbStoreImplement(AbstractStore):
         Returns:
 
         """
-        user_id = int(creator.get("user_id"))
+        user_id = str(creator.get("user_id"))
         creator["user_id"] = user_id
+        # 确保 follows 和 fans 等数字字段转换为字符串，以匹配数据库模型定义
+        for key in ["follows", "fans", "gender"]:
+            if key in creator and creator[key] is not None:
+                creator[key] = str(creator[key])
         async with get_session() as session:
             stmt = select(WeiboCreator).where(WeiboCreator.user_id == user_id)
             res = await session.execute(stmt)

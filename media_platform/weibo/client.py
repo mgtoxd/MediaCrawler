@@ -91,8 +91,13 @@ class WeiboClient(ProxyRefreshMixin):
 
         ok_code = data.get("ok")
         if ok_code == 0:  # response error
+            error_msg = data.get("msg", "")
+            # 当返回"这里还没有内容"时，表示已到达分页末尾，返回空数据而不是抛出异常
+            if error_msg == "这里还没有内容":
+                utils.logger.info(f"[WeiboClient.request] request {method}:{url} reached end of content, since_id may be exhausted")
+                return {"cards": [], "cardlistInfo": {}}
             utils.logger.error(f"[WeiboClient.request] request {method}:{url} err, res:{data}")
-            raise DataFetchError(data.get("msg", "response error"))
+            raise DataFetchError(error_msg)
         elif ok_code != 1:  # unknown error
             utils.logger.error(f"[WeiboClient.request] request {method}:{url} err, res:{data}")
             raise DataFetchError(data.get("msg", "unknown error"))
@@ -390,7 +395,8 @@ class WeiboClient(ProxyRefreshMixin):
         notes_has_more = True
         since_id = ""
         crawler_total_count = 0
-        while notes_has_more:
+        max_notes_count = config.CRAWLER_MAX_NOTES_COUNT
+        while notes_has_more and crawler_total_count < max_notes_count:
             notes_res = await self.get_notes_by_creator(creator_id, container_id, since_id)
             if not notes_res:
                 utils.logger.error(f"[WeiboClient.get_notes_by_creator] The current creator may have been banned by Weibo, so they cannot access the data.")

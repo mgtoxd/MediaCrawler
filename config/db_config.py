@@ -47,11 +47,11 @@ CACHE_TYPE_REDIS = "redis"
 CACHE_TYPE_MEMORY = "memory"
 
 # sqlite config
-SQLITE_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "sqlite_tables.db")
+SQLITE_DB_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "database", "sqlite_tables.db"
+)
 
-sqlite_db_config = {
-    "db_path": SQLITE_DB_PATH
-}
+sqlite_db_config = {"db_path": SQLITE_DB_PATH}
 
 # mongodb config
 MONGODB_HOST = os.getenv("MONGODB_HOST", "localhost")
@@ -69,7 +69,7 @@ mongodb_config = {
 }
 
 # postgres config
-POSTGRES_DB_PWD = os.getenv("POSTGRES_DB_PWD", "123456")
+POSTGRES_DB_PWD = os.getenv("POSTGRES_DB_PWD", "postgres")
 POSTGRES_DB_USER = os.getenv("POSTGRES_DB_USER", "postgres")
 POSTGRES_DB_HOST = os.getenv("POSTGRES_DB_HOST", "localhost")
 POSTGRES_DB_PORT = os.getenv("POSTGRES_DB_PORT", 5432)
