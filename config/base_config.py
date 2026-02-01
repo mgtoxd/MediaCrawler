@@ -56,7 +56,7 @@ CDP_DEBUG_PORT = 9222
 # Windows示例: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
 # macOS示例: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 CUSTOM_BROWSER_PATH = (
-    "C:\\Users\\enkin\\AppData\\Local\\Google\\Chrome SxS\\Application\\chrome.exe"
+    # "C:\\Users\\enkin\\AppData\\Local\\Google\\Chrome SxS\\Application\\chrome.exe"
 )
 
 # CDP模式下是否启用无头模式

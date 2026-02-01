@@ -34,9 +34,6 @@ uv run main.py --init_db sqlite
 # 启动 WebUI 服务
 uv run uvicorn api.main:app --port 8080 --reload
 
-# 启动 TUI 终端界面
-uv run python -m TUI.main
-
 # 运行测试
 uv run pytest
 ```
@@ -52,15 +49,11 @@ uv run pytest
 
 **工厂模式**: `CrawlerFactory` 根据平台名称创建对应的爬虫实例
 ```python
-# main.py
+# main.py:50-67
 CRAWLERS = {
     "xhs": XiaoHongShuCrawler,
     "dy": DouYinCrawler,
-    "ks": KuaishouCrawler,
-    "bili": BilibiliCrawler,
-    "wb": WeiboCrawler,
-    "tieba": TieBaCrawler,
-    "zhihu": ZhihuCrawler,
+    # ... 其他平台
 }
 ```
 
@@ -74,13 +67,13 @@ CRAWLERS = {
 
 ```
 media_platform/
-├── xhs/           # 小红书爬虫 (缩写: xhs)
-├── douyin/        # 抖音爬虫 (缩写: dy)
-├── kuaishou/      # 快手爬虫 (缩写: ks)
-├── bilibili/      # B站爬虫 (缩写: bili)
-├── weibo/         # 微博爬虫 (缩写: wb)
-├── tieba/         # 贴吧爬虫 (缩写: tieba)
-└── zhihu/         # 知乎爬虫 (缩写: zhihu)
+├── xhs/           # 小红书爬虫
+├── douyin/        # 抖音爬虫
+├── kuaishou/      # 快手爬虫
+├── bilibili/      # B站爬虫
+├── weibo/         # 微博爬虫
+├── tieba/         # 贴吧爬虫
+└── zhihu/         # 知乎爬虫
 ```
 
 每个平台目录包含：
@@ -89,15 +82,7 @@ media_platform/
 - `login.py` - 登录逻辑（二维码/手机号/Cookie）
 - `help.py` - 辅助函数和数据提取
 - `field.py` - 数据模型字段定义
-- `extractor.py` - 数据提取器（部分平台）
 - `*_sign.py` / `playwright_sign.py` - 签名生成（某些平台需要）
-
-### 全局上下文变量
-
-`var.py` 使用 `contextvars` 实现全局变量管理：
-- `request_keyword_var` - 当前请求关键词
-- `crawler_type_var` - 爬虫类型
-- `comment_tasks_var` - 评论任务队列
 
 ### 配置系统
 
@@ -107,43 +92,17 @@ media_platform/
 
 **重要**: 命令行参数会覆盖 `config/base_config.py` 中的同名配置。
 
-#### 关键配置项
-
-```python
-# 基础配置
-PLATFORM = "xhs"  # xhs | dy | ks | bili | wb | tieba | zhihu
-KEYWORDS = "关键词1,关键词2"
-LOGIN_TYPE = "qrcode"  # qrcode | phone | cookie
-CRAWLER_TYPE = "search"  # search | detail | creator
-
-# CDP模式配置
-ENABLE_CDP_MODE = False
-CDP_DEBUG_PORT = 9222
-CUSTOM_BROWSER_PATH = ""  # 自定义浏览器路径
-CDP_HEADLESS = False
-
-# 功能开关
-ENABLE_GET_COMMENTS = False
-ENABLE_GET_SUB_COMMENTS = False
-ENABLE_GET_WORDCLOUD = False  # 词云生成
-
-# 数据存储
-SAVE_DATA_OPTION = "json"  # csv | db | json | sqlite | excel | postgres | mongodb
-```
-
 ### 数据存储层
 
 `store/` 目录实现了多种存储方式：
 - CSV、JSON、Excel 文件存储
 - MySQL、SQLite、PostgreSQL、MongoDB 数据库存储
 
-每个平台有独立的存储实现目录（如 `store/xhs/`）。
-
 ### 代理 IP 池
 
 `proxy/` 目录实现了 IP 代理池支持：
 - `proxy_ip_pool.py` - 代理池管理
-- `providers/` - 不同代理服务商的适配器（快代理、豌豆代理）
+- `providers/` - 不同代理服务商的适配器
 
 ### WebUI / API
 
@@ -154,23 +113,6 @@ SAVE_DATA_OPTION = "json"  # csv | db | json | sqlite | excel | postgres | mongo
 - `services/` - 业务逻辑
 - `webui/` - WebUI 前端页面
 
-### TUI 终端界面
-
-`TUI/` 目录包含终端用户界面（基于 Textual）：
-- `main.py` - TUI 入口
-- `app.py` - 主应用逻辑
-- `run.py` - 运行器
-- `QUICKSTART.md` - 快速开始指南
-
-### 工具模块
-
-`tools/` 目录包含核心工具：
-- `app_runner.py` - 异步应用生命周期管理，信号处理
-- `cdp_browser.py` - CDP 浏览器管理
-- `browser_launcher.py` - 浏览器启动器
-- `async_file_writer.py` - 异步文件写入（支持词云生成）
-- `utils.py` - 通用工具函数
-
 ### CDP 模式（反检测）
 
 项目支持两种浏览器运行模式：
@@ -180,29 +122,7 @@ SAVE_DATA_OPTION = "json"  # csv | db | json | sqlite | excel | postgres | mongo
 配置项（`config/base_config.py`）：
 - `ENABLE_CDP_MODE = True` - 启用 CDP 模式
 - `CUSTOM_BROWSER_PATH` - 自定义浏览器路径
-- `CDP_DEBUG_PORT` - CDP 调试端口（默认 9222）
-- `CDP_HEADLESS` - CDP 模式无头开关
-
-## 命令行参数
-
-使用 Typer 框架，支持以下参数：
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `--platform` | 枚举 | 平台: xhs/dy/ks/bili/wb/tieba/zhihu |
-| `--lt` | 枚举 | 登录类型: qrcode/phone/cookie |
-| `--type` | 枚举 | 爬取类型: search/detail/creator |
-| `--start` | int | 起始页码 |
-| `--keywords` | str | 搜索关键词（逗号分隔）|
-| `--get_comment` | str | 是否爬取评论 (yes/no) |
-| `--get_sub_comment` | str | 是否爬取二级评论 (yes/no) |
-| `--headless` | str | 无头模式 (yes/no) |
-| `--save_data_option` | 枚举 | 存储格式: csv/db/json/sqlite/excel/postgres/mongodb |
-| `--init_db` | 枚举 | 初始化数据库: sqlite/mysql/postgres |
-| `--cookies` | str | Cookie 值 |
-| `--specified_id` | str | 指定帖子/视频 ID（逗号分隔）|
-| `--creator_id` | str | 创作者 ID（逗号分隔）|
-| `--max_comments_count_singlenotes` | int | 单笔记最大评论数 |
+- `CDP_DEBUG_PORT` - CDP 调试端口
 
 ## 爬取类型
 
@@ -221,13 +141,10 @@ SAVE_DATA_OPTION = "json"  # csv | db | json | sqlite | excel | postgres | mongo
 ## 添加新平台支持
 
 1. 在 `media_platform/` 下创建新平台目录
-2. 实现继承 `AbstractCrawler` 的爬虫类（`core.py`）
-3. 实现 `AbstractLogin` 登录类（`login.py`）
-4. 实现 `AbstractApiClient` 客户端类（`client.py`）
-5. 在 `main.py` 的 `CrawlerFactory.CRAWLERS` 中注册
-6. 在 `cmd_arg/arg.py` 的 `PlatformEnum` 中添加枚举
-7. 在 `config/` 下添加平台特定配置文件
-8. 在 `store/` 下添加平台存储实现
+2. 实现继承 `AbstractCrawler` 的爬虫类
+3. 在 `main.py` 的 `CrawlerFactory.CRAWLERS` 中注册
+4. 在 `cmd_arg/arg.py` 的 `PlatformEnum` 中添加枚举
+5. 在 `config/` 下添加平台特定配置文件
 
 ## 注意事项
 
@@ -235,4 +152,3 @@ SAVE_DATA_OPTION = "json"  # csv | db | json | sqlite | excel | postgres | mongo
 - 爬取数据时请控制频率，避免对平台造成负担
 - 登录态会保存在 `chrome_user_data/` 目录
 - 签名相关的 JS 文件在 `libs/` 目录
-- 使用 `--init_db` 初始化数据库表结构

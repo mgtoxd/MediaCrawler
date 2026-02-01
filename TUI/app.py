@@ -7,14 +7,15 @@ MediaCrawler TUI - Textual Terminal User Interface
 
 from textual.app import App, ComposeResult
 from textual.widgets import (
-    Button, Header, Footer, Static, Input,
-    DataTable, ListItem, ListView
+    Button, Header, Footer, Static, Input, Label, RichLog
 )
+
 from textual.containers import Horizontal, Vertical, Container
 from textual.reactive import reactive
 from textual import events
 from textual.binding import Binding
 from textual.screen import ModalScreen
+
 import subprocess
 import sys
 import os
@@ -38,10 +39,10 @@ class CreatorList(Vertical):
             "xhs": {"name": "小红书", "config": "config/xhs_config.py", "attr": "XHS_CREATOR_ID_LIST"},
             "dy": {"name": "抖音", "config": "config/dy_config.py", "attr": "DY_CREATOR_ID_LIST"},
             "ks": {"name": "快手", "config": "config/ks_config.py", "attr": "KS_CREATOR_ID_LIST"},
-            "bili": {"name": "B站", "config": "config/bilibili_config.py", "attr": "BILIBILI_CREATOR_ID_LIST"},
+            "bili": {"name": "B站", "config": "config/bilibili_config.py", "attr": "BILI_CREATOR_ID_LIST"},
             "wb": {"name": "微博", "config": "config/weibo_config.py", "attr": "WEIBO_CREATOR_ID_LIST"},
-            "tieba": {"name": "贴吧", "config": "config/tieba_config.py", "attr": "TIEBA_CREATOR_ID_LIST"},
-            "zhihu": {"name": "知乎", "config": "config/zhihu_config.py", "attr": "ZHIHU_CREATOR_ID_LIST"},
+            "tieba": {"name": "贴吧", "config": "config/tieba_config.py", "attr": "TIEBA_CREATOR_URL_LIST"},
+            "zhihu": {"name": "知乎", "config": "config/zhihu_config.py", "attr": "ZHIHU_CREATOR_URL_LIST"},
         }
         self.creator_ids = []
         self.load_config()
@@ -113,31 +114,40 @@ class CreatorList(Vertical):
             self.save_config()
             self.update_display()
 
-    def remove_id(self, index: int) -> None:
-        """删除 Creator ID"""
-        if 0 <= index < len(self.creator_ids):
-            removed_id = self.creator_ids[index]
-            del self.creator_ids[index]
-            self.save_config()
-            self.update_display()
-            # 显示删除通知
-            if hasattr(self, 'app') and self.app:
-                self.app.notify(f"🗑️ 已删除: {removed_id}", severity="information")
+
 
     def update_display(self) -> None:
         """更新列表显示"""
-        table = self.query_one(DataTable)
+        container = self.query_one("#creator-items", Vertical)
+        container.remove_children()
 
-        # 清除所有内容（行和列）
-        table.clear(columns=True)
+        if not self.creator_ids:
+            container.mount(Static("📭 暂无数据，请在上方输入添加", classes="empty-tip"))
+            return
 
-        # 添加列
-        table.add_column("序号", width=6)
-        table.add_column("Creator ID", width=60)
+        for index, creator_id in enumerate(self.creator_ids):
+            # 截断显示过长的ID
+            display_text = creator_id if len(creator_id) <= 65 else creator_id[:62] + "..."
+            # 序号从1开始
+            row_num = f"{index + 1:2d}."
+            row = Horizontal(
+                Label(row_num, classes="row-number"),
+                Label(display_text, classes="creator-text"),
+                Button("✕", id=f"del-{index}", variant="error", classes="delete-btn"),
+                classes="creator-row"
+            )
+            container.mount(row)
 
-        # 添加数据行，使用索引作为行键
-        for idx, creator_id in enumerate(self.creator_ids):
-            table.add_row(str(idx + 1), creator_id, key=str(idx))
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """处理删除按钮点击"""
+        if event.button.id and event.button.id.startswith("del-"):
+            index = int(event.button.id.split("-")[1])
+            if 0 <= index < len(self.creator_ids):
+                removed = self.creator_ids.pop(index)
+                self.save_config()
+                self.update_display()
+                if self.app:
+                    self.app.notify(f"已删除: {removed[:30]}..." if len(removed) > 30 else f"已删除: {removed}")
 
     def on_mount(self) -> None:
         """组件挂载后初始化显示"""
@@ -145,7 +155,7 @@ class CreatorList(Vertical):
 
     def compose(self) -> ComposeResult:
         """组合 UI 组件"""
-        yield DataTable()
+        yield Vertical(id="creator-items")
 
 
 class PlatformScreen(ModalScreen):
@@ -201,12 +211,9 @@ class PlatformScreen(ModalScreen):
 
     #list-container {
         height: 1fr;
-        border: solid $primary;
-        padding: 1;
-    }
-
-    DataTable {
-        height: 100%;
+        border: solid $primary 50%;
+        padding: 0;
+        background: $surface-darken-1;
     }
 
     #button-section {
@@ -222,6 +229,85 @@ class PlatformScreen(ModalScreen):
 
     Input {
         width: 1fr;
+    }
+
+    #creator-items {
+        height: 100%;
+        overflow-y: auto;
+        padding: 0 1;
+    }
+
+    .creator-row {
+        height: auto;
+        layout: horizontal;
+        margin: 0;
+        padding: 0 1;
+        border-bottom: solid $primary 20%;
+    }
+
+    .creator-row:hover {
+        background: $primary 10%;
+    }
+
+    .row-number {
+        width: 4;
+        height: auto;
+        content-align: center middle;
+        color: $text-muted;
+        text-style: bold;
+    }
+
+    .creator-text {
+        width: 1fr;
+        height: auto;
+        content-align: left middle;
+        padding: 0 1;
+        color: $text;
+    }
+
+    .delete-btn {
+        width: 3;
+        min-width: 3;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        content-align: center middle;
+        border: none;
+        background: transparent;
+        color: $error 60%;
+        text-style: bold;
+    }
+
+    .delete-btn:hover {
+        background: $error;
+        color: $text;
+    }
+
+    .empty-tip {
+        text-align: center;
+        text-style: italic;
+        color: $text-muted;
+        height: 100%;
+        content-align: center middle;
+    }
+
+    #log-section {
+        height: 30%;
+        margin: 1 0 0 0;
+        border-top: solid $primary 30%;
+    }
+
+    #log-header {
+        height: 1;
+        margin: 0 0 1 0;
+        text-style: bold;
+    }
+
+    #crawler-log {
+        height: 1fr;
+        border: solid $primary 30%;
+        background: $surface-darken-1;
+        padding: 0 1;
     }
     """
 
@@ -244,13 +330,17 @@ class PlatformScreen(ModalScreen):
                 )
 
             with Vertical(id="list-section"):
-                yield Static("📋 已添加的列表 (选中行后按 Delete 键删除):", id="list-header")
+                yield Static("📋 已添加的列表:", id="list-header")
                 with Vertical(id="list-container"):
                     yield CreatorList(self.platform_key, id="creator-list")
 
             with Horizontal(id="button-section"):
                 yield Button("◀ 返回", id="close-button", variant="default", classes="action-button")
                 yield Button("▶ 运行爬虫", id="run-button", variant="success", classes="action-button")
+
+            with Vertical(id="log-section"):
+                yield Static("📜 运行日志:", id="log-header")
+                yield RichLog(id="crawler-log", wrap=True)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """处理输入提交"""
@@ -271,7 +361,7 @@ class PlatformScreen(ModalScreen):
             self.run_crawler()
 
     def run_crawler(self) -> None:
-        """运行爬虫命令"""
+        """运行爬虫命令并实时显示日志"""
         command = [
             "uv", "run", "main.py",
             "--platform", self.platform_key,
@@ -280,25 +370,64 @@ class PlatformScreen(ModalScreen):
             "--save_data_option", "postgres"
         ]
 
+        log_widget = self.query_one("#crawler-log", RichLog)
+        log_widget.clear()
+        log_widget.write(f"[dim]▶ 启动命令: {' '.join(command)}[/dim]\n")
+        log_widget.write("[dim]▶ 正在启动爬虫...[/dim]\n\n")
+
         try:
+            # 使用 stdout=PIPE 和 stderr=STDOUT 合并输出
+            import subprocess
             process = subprocess.Popen(
                 command,
                 cwd=str(project_root),
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,  # 行缓冲
+                universal_newlines=True
             )
-            self.app.notify(
-                title="爬虫已启动",
-                message=f"平台: {self.platform_name}\nPID: {process.pid}\n命令: {' '.join(command)}",
-                severity="information"
-            )
+
+            # 启动后台 worker 读取输出
+            self.run_worker(self._read_output(process, log_widget))
+
         except Exception as e:
-            self.app.notify(
-                title="启动失败",
-                message=str(e),
-                severity="error"
-            )
+            log_widget.write(f"[red]✗ 启动失败: {str(e)}[/red]\n")
+
+    async def _read_output(self, process: subprocess.Popen, log_widget: RichLog) -> None:
+        """后台读取子进程输出"""
+        import asyncio
+
+        # 写入启动信息
+        await asyncio.sleep(0.1)
+        log_widget.write(f"[green]✓ 爬虫已启动 (PID: {process.pid})[/green]\n")
+        log_widget.write("[dim]" + "─" * 50 + "[/dim]\n")
+
+        # 实时读取输出
+        while True:
+            line = process.stdout.readline()
+            if not line:
+                # 检查进程是否结束
+                ret_code = process.poll()
+                if ret_code is not None:
+                    break
+                await asyncio.sleep(0.1)
+                continue
+
+            # 直接写入日志（在 UI 线程中通过 asyncio 调度）
+            line = line.rstrip()
+            if line:
+                log_widget.write(line)
+
+            await asyncio.sleep(0.01)
+
+        # 进程结束
+        ret_code = process.wait()
+        log_widget.write("\n[dim]" + "─" * 50 + "[/dim]")
+        if ret_code == 0:
+            log_widget.write(f"\n[green]✓ 爬虫执行完成 (退出码: {ret_code})[/green]")
+        else:
+            log_widget.write(f"\n[yellow]⚠ 爬虫已退出 (退出码: {ret_code})[/yellow]")
 
 
 class MediaCrawlerTUI(App):
@@ -307,37 +436,7 @@ class MediaCrawlerTUI(App):
     BINDINGS = [
         Binding("q", "quit", "退出"),
         Binding("r", "refresh", "刷新"),
-        Binding("delete,backspace", "delete_selected", "删除选中项"),
     ]
-
-    def action_delete_selected(self) -> None:
-        """删除选中的行"""
-        try:
-            # 查找 CreatorList
-            creator_list = self.query_one("#creator-list", CreatorList)
-
-            # 查找 DataTable（在 CreatorList 内部）
-            table = creator_list.query_one(DataTable)
-
-            # 检查是否有选中的行
-            if table.cursor_row is not None:
-                # 获取选中行的键
-                selected_row_key = table.get_row_at(table.cursor_row).key
-
-                if selected_row_key is not None:
-                    # 行键是索引的字符串形式
-                    index = int(selected_row_key)
-
-                    # 删除
-                    creator_list.remove_id(index)
-            else:
-                self.notify("请先用方向键选中要删除的行", severity="warning")
-
-        except Exception as e:
-            # 如果出错，显示错误信息
-            import traceback
-            error_msg = f"删除失败: {str(e)}\n{traceback.format_exc()}"
-            self.notify(f"删除失败，请确保已选中一行", severity="error")
 
     CSS = """
     Screen {
@@ -405,10 +504,10 @@ class MediaCrawlerTUI(App):
             id="menu"
         )
         yield Static(
-            "📌 使用流程: 点击平台按钮 → 输入 Creator ID → Enter 添加 → 选中行按 Delete 删除 → 点击'运行爬虫'",
+            "📌 使用流程: 点击平台按钮 → 输入 Creator ID → Enter 添加 → 点击'运行爬虫'",
             id="info"
         )
-        yield Static("快捷键: [Q]退出 | [R]刷新 | [Delete]删除选中项", id="footer-info")
+        yield Static("快捷键: [Q]退出 | [R]刷新", id="footer-info")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
